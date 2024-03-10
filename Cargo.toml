@@ -1,0 +1,25 @@
+[package]
+name = "rust-pq-c-esta-proibido"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "httpserver"
+path = "src/httpserver/main.rs"
+
+[[bin]]
+name = "backend"
+path = "src/backend/main.rs"
+
+[[bin]]
+name = "database"
+path = "src/database/main.rs"
+
+[lib]
+name = "database"
+path = "src/database/lib.rs"
+
+[dependencies]
+httparse = "1.8.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
