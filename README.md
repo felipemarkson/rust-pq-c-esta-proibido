@@ -21,3 +21,9 @@ Com exceção do `httpserver` na porta `9999`, toda a comunicação é feita em 
 req/res <-> httpserver <-> |                  | <-> database
                            | <-> backend2 <-> |
 ```
+
+Não há thread, não há `async` (tokio, credo), cada componente é rodado em uma thread, tudo síncrono.
+
+Basicamente, esse é um teste para verificar o quanto esse tipo solução pode performar :).
+
+
