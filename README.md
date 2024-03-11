@@ -2,7 +2,7 @@
 
 > Veja uma versão mais interessante em C [aqui](https://github.com/felipemarkson/rinha-backend-q1-2024).
 
-Basicamente tudo é Rust nesse repositório.
+Basicamente porque [C virou ilegal](https://www.infoworld.com/article/3713203/white-house-urges-developers-to-dump-c-and-c.html), logo tudo é Rust nesse repositório para evitar ser preso pelos EUA.
 
 Tentei evitar ao máximo as depedências, porém essa não parece ser a filosofia de um software em Rust.
 
