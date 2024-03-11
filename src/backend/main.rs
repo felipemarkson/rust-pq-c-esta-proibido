@@ -1,15 +1,17 @@
+use chrono::{DateTime, Utc};
 use database::{
     BufferOperation, DBconn, Extrato, Operation, OperationKind, Transacao, TransacaoReturn,
     NCHAR_DESCRIPTION, SIZE_EXTRATO, SIZE_OPERATION, SIZE_TRANSACAO_RETURN,
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    env,
     net::{SocketAddr, UdpSocket},
-    time::{SystemTime, UNIX_EPOCH},
+    process::exit,
+    time::SystemTime,
 };
 
 const DATA_LIMIT: usize = 4096;
-const PORT: u16 = 8888;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TrasacaoBackend {
@@ -18,11 +20,25 @@ struct TrasacaoBackend {
     descricao: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct TrasacaoBackendResponse {
+    valor: i64,
+    tipo: String,
+    descricao: String,
+    realizada_em: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SaldoBackend {
+    total: i64,
+    data_extrato: String,
+    limite: i64,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct ExtratoBackend {
-    total: i64,
-    limite: i64,
-    transacoes: Vec<TrasacaoBackend>,
+    saldo: SaldoBackend,
+    ultimas_transacoes: Vec<TrasacaoBackendResponse>,
 }
 
 impl From<Extrato> for ExtratoBackend {
@@ -33,8 +49,10 @@ impl From<Extrato> for ExtratoBackend {
                 continue;
             }
             let mut tipo = String::new();
+            let mut mutiplier = 1;
             if transacao.value < 0 {
                 tipo.push('d');
+                mutiplier = -1;
             } else {
                 tipo.push('c');
             }
@@ -45,16 +63,26 @@ impl From<Extrato> for ExtratoBackend {
                 }
                 descricao.push(ch);
             }
-            transacoes.push(TrasacaoBackend {
-                valor: transacao.value as u32,
+
+            let date = transacao.timestap;
+            let date: DateTime<Utc> = date.into();
+
+            transacoes.push(TrasacaoBackendResponse {
+                valor: mutiplier*transacao.value,
                 tipo,
                 descricao,
+                realizada_em: date.to_rfc3339(),
             });
         }
-        ExtratoBackend {
+        let now: DateTime<Utc> = SystemTime::now().into();
+        let saldo = SaldoBackend {
             limite: extrato.limite,
             total: extrato.total,
-            transacoes,
+            data_extrato: now.to_rfc3339(),
+        };
+        ExtratoBackend {
+            saldo,
+            ultimas_transacoes: transacoes,
         }
     }
 }
@@ -222,7 +250,24 @@ fn req_parser(buffer: &[u8]) -> Result<Paths, Response> {
                             None,
                         ));
                     }
-                    let transacao_body = transacao_body.unwrap();
+                    let transacao_body: TrasacaoBackend = transacao_body.unwrap();
+                    if transacao_body.descricao.len() < 1 {
+                        return Err(Response::new(
+                            422,
+                            "Unprocessable Content",
+                            Some("len min descricao"),
+                            None,
+                        ));
+                    }
+                    if transacao_body.tipo.len() != 1 {
+                        return Err(Response::new(
+                            422,
+                            "Unprocessable Content",
+                            Some("len tipo"),
+                            None,
+                        ));
+                    }
+
                     Ok(Paths::Transacao(id, transacao_body))
                 }
                 "extrato" => {
@@ -268,19 +313,15 @@ fn process_transacao(transacao: TrasacaoBackend, id: u8) -> Response {
         _ => return Response::new(422, "Unprocessable Content", Some("Invalid tipo"), None),
     };
 
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH);
-    if let Err(e) = timestamp {
-        eprintln!("Backend: Timestamp error: {}", e);
-        return Response::new(500, "Internal Error", Some("Timestamp error"), None);
-    }
-    let timestamp = timestamp.unwrap();
+    let timestamp = SystemTime::now();
+    let timestamp = timestamp;
     let mut op = Operation {
         kind: OperationKind::Transacao,
         id,
         transacao: Transacao {
             value,
             transacao_description: ['\0'; NCHAR_DESCRIPTION],
-            timestap: timestamp.as_secs(),
+            timestap: timestamp,
         },
     };
     for (indx, char) in transacao.descricao.chars().enumerate() {
@@ -354,7 +395,6 @@ fn process_transacao(transacao: TrasacaoBackend, id: u8) -> Response {
                 );
             }
             let mut sret = sret.unwrap();
-            sret.push_str("\r\n");
             sret.shrink_to_fit();
 
             Response::new(200, "OK", None, Some(sret.as_bytes().into()))
@@ -430,7 +470,6 @@ fn process_extrato(id: u8) -> Response {
                 );
             }
             let mut sret = sret.unwrap();
-            sret.push_str("\r\n");
             sret.shrink_to_fit();
             Response::new(200, "OK", None, Some(sret.as_bytes().into()))
         }
@@ -438,7 +477,19 @@ fn process_extrato(id: u8) -> Response {
 }
 
 fn main() -> std::io::Result<()> {
-    let socket = UdpSocket::bind(SocketAddr::from(([127, 0, 0, 1], PORT)))?;
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        eprintln!("invalid number of arguments");
+        exit(1);
+    }
+    let port = args[1].parse::<u16>();
+    if let Err(e) = port {
+        eprint!("Could not parse port : {}", e);
+        exit(1);
+    }
+    let port = port.unwrap();
+
+    let socket = UdpSocket::bind(SocketAddr::from(([127, 0, 0, 1], port)))?;
     loop {
         let mut buf = [0; DATA_LIMIT];
         let result = socket.recv_from(&mut buf);
@@ -449,7 +500,7 @@ fn main() -> std::io::Result<()> {
         let (nbytes, addr) = result.unwrap();
         let buf = &(buf[..nbytes]);
 
-        println!("Backend: I recived a connection!");
+        // println!("Backend: I recived a connection!");
 
         let path = req_parser(buf);
         if let Err(err_response) = path {

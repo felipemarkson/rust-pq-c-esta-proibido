@@ -1,0 +1,40 @@
+services:
+  db:
+    restart: always
+    build:
+      dockerfile: dockerfiles/database.Dockerfile
+    network_mode: "host"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "260MB"
+
+  api1: &api
+    restart: always
+    build:
+      dockerfile: dockerfiles/backend.Dockerfile
+    environment:
+      PORT: 8000
+    network_mode: "host"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "6MB" # 2MB is enougth, but docker only permit 6MB :(
+
+  api2:
+    <<: *api
+    environment:
+      PORT: 8001
+
+  loadbalancer:
+    restart: always
+    build:
+      dockerfile: dockerfiles/httpserver.Dockerfile
+    network_mode: "host"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "260MB"

@@ -20,6 +20,7 @@ name = "database"
 path = "src/database/lib.rs"
 
 [dependencies]
+chrono = "0.4.35"
 httparse = "1.8.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

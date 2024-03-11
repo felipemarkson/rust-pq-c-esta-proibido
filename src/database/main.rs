@@ -4,7 +4,7 @@ mod client;
 use client::Client;
 use database::{
     BufferExtrato, BufferOperation, BufferTranscaoReturn, Converter, Operation, OperationKind,
-    TransacaoReturn, RES_ERROR, SIZE_OPERATION, PORT_DB
+    TransacaoReturn, PORT_DB, RES_ERROR, SIZE_OPERATION,
 };
 
 fn send_buffer(socket: &UdpSocket, buffer: &[u8], addr: &SocketAddr) {
@@ -40,7 +40,7 @@ fn main() -> std::io::Result<()> {
 
         match op.kind {
             OperationKind::Extrato => {
-                let client = clients.get(op.id as usize);
+                let client = clients.get(op.id as usize - 1);
                 if client.is_none() {
                     eprint!("DB: Invalid id {}", op.id);
                     send_buffer(&socket, &RES_ERROR, &addr);
@@ -52,7 +52,7 @@ fn main() -> std::io::Result<()> {
                 send_buffer(&socket, &buf, &addr);
             }
             OperationKind::Transacao => {
-                let client = clients.get_mut(op.id as usize);
+                let client = clients.get_mut(op.id as usize - 1);
                 if client.is_none() {
                     eprint!("DB: Invalid id {}", op.id);
                     send_buffer(&socket, &RES_ERROR, &addr);

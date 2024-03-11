@@ -1,6 +1,7 @@
-use database::{Extrato, Transacao, TransacaoExtrato, NCHAR_DESCRIPTION};
+use database::{Extrato, Transacao, TransacaoExtrato, NCHAR_DESCRIPTION, NTRANSACOES};
 use std::collections::VecDeque;
 use std::mem::size_of;
+use std::time::UNIX_EPOCH;
 
 #[derive(Debug)]
 pub struct Client {
@@ -68,14 +69,14 @@ impl Client {
             saldo,
             transacoes: VecDeque::new(),
         };
-        println!("DB.Client: Creating new DB for id {}", id);
+        println!("DB.Client: Creating new DB for id {id} in /client_{id}.db");
         client.save_client();
         client
     }
     pub fn load_client(id: u8) -> Option<Client> {
         let buff = std::fs::read(format!("client_{}.db", id));
-        if buff.is_err() {
-            eprintln!("DB.Client: Could not load DB for id {}", id);
+        if let Err(e) = buff {
+            eprintln!("DB.Client: Could not load DB from /client_{id}.db: {}", e);
             return None;
         }
         let buff = buff.unwrap();
@@ -83,6 +84,7 @@ impl Client {
             return None;
         }
         let client: &ClientRaw = unsafe { &*(buff.as_ptr() as *const ClientRaw) };
+        println!("DB.Client: Data loaded from /client_{id}.db");
         Some(client.into())
     }
     fn save_client(&self) {
@@ -107,8 +109,8 @@ impl Client {
             isvalid: false,
             value: 0,
             transacao_description: ['\0'; NCHAR_DESCRIPTION],
-            timestap: 0,
-        }; 6];
+            timestap: UNIX_EPOCH,
+        }; NTRANSACOES];
 
         for (indx, transacao) in self.transacoes.iter().enumerate() {
             transacoes[indx].isvalid = true;

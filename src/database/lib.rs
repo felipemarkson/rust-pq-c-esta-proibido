@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 use std::mem::{self, size_of};
 use std::net::{SocketAddr, UdpSocket};
 use std::ptr::{read, write};
+use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
@@ -9,6 +10,7 @@ pub const SIZE_OPERATION: usize = size_of::<Operation>();
 pub const SIZE_EXTRATO: usize = size_of::<Extrato>();
 pub const SIZE_TRANSACAO_RETURN: usize = size_of::<TransacaoReturn>();
 pub const NCHAR_DESCRIPTION: usize = 10; // 10 chars + \0
+pub const NTRANSACOES: usize = 10; // 10 chars + \0
 
 pub type BufferOperation = [u8; SIZE_OPERATION];
 pub type BufferDescription = [char; NCHAR_DESCRIPTION];
@@ -23,7 +25,7 @@ pub const RES_ERROR: [u8; 1] = [1];
 pub struct Transacao {
     pub value: i64,
     pub transacao_description: BufferDescription,
-    pub timestap: u64,
+    pub timestap: SystemTime,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -32,14 +34,14 @@ pub struct TransacaoExtrato {
     pub isvalid: bool,
     pub value: i64,
     pub transacao_description: BufferDescription,
-    pub timestap: u64,
+    pub timestap: SystemTime,
 }
 #[derive(Clone, Copy, Debug)]
 #[repr(C, packed)]
 pub struct Extrato {
     pub total: i64,
     pub limite: i64,
-    pub transacoes: [TransacaoExtrato; 6],
+    pub transacoes: [TransacaoExtrato; NTRANSACOES],
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

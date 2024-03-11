@@ -12,13 +12,12 @@ _term() {
 }
 
 trap _term SIGTERM SIGINT
+rm -f client_*.db
+rm -f log.log
 
 
 cargo run --release --bin database &
-db_pid=$!
-cargo run --release --bin backend &
-backend_pid=$!
-cargo run --release --bin httpserver &
-server_pid=$!
-echo "$db_pid $backend_pid $server_pid"
-wait $server_pid
+cargo run --release --bin backend 8000 &
+cargo run --release --bin backend 8001 &
+cargo run --release --bin httpserver 8000 8001  > log.log &
+wait $!
