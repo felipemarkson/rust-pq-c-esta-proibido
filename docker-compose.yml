@@ -21,7 +21,7 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: "6MB" # 2MB is enougth, but docker only permit 6MB :(
+          memory: "10MB" # 2MB is enougth, but docker only permit 6MB :(
 
   api2:
     <<: *api

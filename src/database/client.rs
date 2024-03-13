@@ -42,7 +42,7 @@ pub struct ClientRaw {
     limite: i64,
     saldo: i64,
     ntransacoes: usize,
-    transacoes: [Transacao; 6],
+    transacoes: [Transacao; NTRANSACOES],
 }
 
 impl From<&Client> for ClientRaw {
@@ -97,7 +97,7 @@ impl Client {
             return Err(());
         }
         self.saldo += transacao.value;
-        if self.transacoes.len() >= 6 {
+        if self.transacoes.len() >= NTRANSACOES {
             self.transacoes.pop_back();
         }
         self.transacoes.push_front(transacao);
